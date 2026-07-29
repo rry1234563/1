@@ -137,7 +137,28 @@
     <div id="assessmentModal" class="modal-overlay" style="display: none;">
         <div class="modal-content" id="modalContent"></div>
     </div>
+
     <script>
+        // ==================== 登录状态检查（新增） ====================
+        (async function() {
+            const token = localStorage.getItem('token');
+            const username = localStorage.getItem('username');
+            if (!token || !username) {
+                window.location.href = '/login.html';
+                return;
+            }
+            try {
+                const res = await fetch(`/api/verify?token=${encodeURIComponent(token)}&username=${encodeURIComponent(username)}`);
+                const data = await res.json();
+                if (!data.valid) {
+                    localStorage.clear();
+                    window.location.href = '/login.html';
+                }
+            } catch(e) {
+                console.warn('Token验证失败，但仍允许访问');
+            }
+        })();
+
         // ==================== 存储键 ====================
         const STORAGE_KEY = 'psy_qa_data';
         const ASSESS_STORAGE_KEY = 'psy_assessments';
@@ -198,7 +219,7 @@
             return '谢谢你的分享，我很想更深入地了解你的感受。可以再多和我说一些吗？';
         }
 
-        // ==================== 答案查找（核心：预设优先 → 联网搜索 → 智能回复） ====================
+        // ==================== 答案查找（预设优先 → 联网搜索 → 智能回复） ====================
         async function findAnswer(input) {
             refreshQAData();
             const q = input.trim(); if (!q) return null;
@@ -290,7 +311,6 @@
             if (!text.trim()) return; const userMsg = text.trim();
             addMessage(userMsg, 'user'); userInput.value = ''; sendBtn.disabled = true; userInput.disabled = true; stopSpeaking();
             const isDanger = isDangerousMessage(userMsg); if (isDanger) sendDangerAlert(userMsg);
-            // 模拟思考时间
             await new Promise(r => setTimeout(r, 400 + Math.random() * 500));
             const aiReply = await findAnswer(userMsg);
             addMessage(aiReply, 'ai');
