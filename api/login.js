@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 
 // 从环境变量读取用户列表
-const USERS_JSON = process.env.USERS || '[]';
+const USERS_JSON = process.env.USERS || '[{"username":"2024080818541","password":"8541"}]';
 let users = [];
 try {
     users = JSON.parse(USERS_JSON);
