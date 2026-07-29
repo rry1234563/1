@@ -1,10 +1,13 @@
 // api/search.js
 const fetch = require('node-fetch');
 
-module.exports = async function handler(req, res) {
-    const q = req.query.q;
+exports.handler = async function(event, context) {
+    const q = event.queryStringParameters.q;
     if (!q) {
-        return res.status(400).json({ error: '缺少问题参数' });
+        return {
+            statusCode: 400,
+            body: JSON.stringify({ error: '缺少问题参数' })
+        };
     }
 
     try {
@@ -28,9 +31,15 @@ module.exports = async function handler(req, res) {
             answer = '没有找到相关信息，请换个问题试试。';
         }
 
-        return res.json({ answer });
+        return {
+            statusCode: 200,
+            body: JSON.stringify({ answer })
+        };
     } catch (err) {
         console.error('搜索失败:', err);
-        return res.status(500).json({ answer: '搜索服务暂时不可用。' });
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ answer: '搜索服务暂时不可用。' })
+        };
     }
 };
