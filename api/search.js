@@ -27,7 +27,7 @@ exports.handler = async function(event, context) {
             }).join('\n');
             answer = `有关“${q}”的搜索结果：\n${snippets}\n\n以上信息仅供参考。`;
         } else {
-            answer = '没有找到相关信息，请换个问题试试。';
+            answer = '';
         }
 
         return {
