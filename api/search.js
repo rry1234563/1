@@ -1,6 +1,4 @@
 // api/search.js
-const fetch = require('node-fetch');
-
 exports.handler = async function(event, context) {
     const q = event.queryStringParameters.q;
     if (!q) {
@@ -11,6 +9,7 @@ exports.handler = async function(event, context) {
     }
 
     try {
+        // Node 18+ 内置 fetch，直接使用
         const response = await fetch(
             `https://api.duckduckgo.com/?q=${encodeURIComponent(q)}&format=json&no_html=1&skip_disambig=1`
         );
