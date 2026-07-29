@@ -1,5 +1,7 @@
 // api/search.js
-export default async function handler(req, res) {
+const fetch = require('node-fetch');
+
+module.exports = async function handler(req, res) {
     const q = req.query.q;
     if (!q) {
         return res.status(400).json({ error: '缺少问题参数' });
@@ -31,4 +33,4 @@ export default async function handler(req, res) {
         console.error('搜索失败:', err);
         return res.status(500).json({ answer: '搜索服务暂时不可用。' });
     }
-}
+};
