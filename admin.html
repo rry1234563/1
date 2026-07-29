@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台</title>
+    <style>
+        :root { --primary: #7c6fa0; --bg: #f7f5f2; --text: #3d3649; --border: #e5e0eb; }
+        body { font-family: 'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif; background: var(--bg); margin:0; padding:20px; display:flex; justify-content:center; }
+        .container { max-width:1100px; width:100%; background:#fff; border-radius:20px; padding:30px; box-shadow:0 4px 20px rgba(60,40,80,0.08); }
+        h1,h2 { color:var(--primary); margin-bottom:20px; }
+        .section { margin-bottom:40px; border-top: 1px solid var(--border); padding-top: 20px; }
+        .section:first-of-type { border-top: none; padding-top: 0; }
+        label { display:block; font-weight:600; margin-bottom:5px; color:var(--text); }
+        input,textarea { width:100%; padding:10px; border:1.5px solid var(--border); border-radius:10px; font-size:0.95rem; font-family:inherit; }
+        textarea { resize:vertical; min-height:60px; }
+        .keywords-hint { font-size:0.8rem; color:#888; margin-top:4px; }
+        .btn { background:var(--primary); color:#fff; border:none; padding:8px 16px; border-radius:20px; cursor:pointer; font-size:0.85rem; margin-right:8px; display:inline-flex; align-items:center; gap:4px; }
+        .btn:hover { opacity:0.9; }
+        .btn-danger { background:#c97a7a; }
+        .list-container { margin-top:20px; }
+        .item { border:1px solid var(--border); border-radius:12px; padding:15px; margin-bottom:12px; background:#fdfcfd; position:relative; }
+        .item .timestamp { color:#888; font-size:0.8rem; margin-bottom:6px; }
+        .item .content { margin:6px 0; line-height:1.5; }
+        .item.alert { background:#fff5f5; border-color:#f5c6c6; }
+        .item.alert::before { content:'⚠️ 异常'; position:absolute; top:10px; right:10px; background:#c97a7a; color:#fff; padding:2px 8px; border-radius:10px; font-size:0.75rem; }
+        .actions { margin-top:10px; display:flex; flex-wrap:wrap; gap:6px; }
+        .test-list-item { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; }
+        .btn-sm { padding:4px 10px; font-size:0.75rem; }
+        .question-block-editor { background:#f9f7fb; border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; }
+        .question-block-editor .q-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+        .option-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+        .option-row input { flex:1; }
+        .option-row .option-value { max-width:100px; }
+        .option-row .btn-sm { flex-shrink:0; }
+        .add-option-btn { margin-top:4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 管理后台</h1>
+        <!-- 问答管理 -->
+        <div class="section">
+            <h2>📝 问答管理</h2>
+            <div class="form-group"><label>标准问题</label><input type="text" id="questionInput" placeholder="例如：我最近压力很大"></div>
+            <div class="form-group"><label>预设答案</label><textarea id="answerInput" placeholder="输入答案..."></textarea></div>
+            <div class="form-group"><label>关键词（逗号分隔）</label><input type="text" id="keywordsInput" placeholder="例如：压力,焦虑"><div class="keywords-hint">用户输入包含这些关键词即匹配</div></div>
+            <div><button class="btn" onclick="saveQA()">保存/添加</button><button class="btn btn-danger" onclick="clearForm()">清空表单</button></div>
+            <div class="list-container" id="qaList"></div>
+        </div>
+        <!-- 测评记录 -->
+        <div class="section"><h2>📈 测评记录</h2><button class="btn" onclick="loadAssessmentRecords()">刷新</button><button class="btn btn-danger" onclick="clearAllRecords()">清空</button><div class="list-container" id="recordList"></div></div>
+        <!-- 对话记录 -->
+        <div class="section"><h2>💬 对话记录</h2><button class="btn" onclick="loadConversations()">刷新</button><button class="btn btn-danger" onclick="clearConversations()">清空</button><div class="list-container" id="conversationList"></div></div>
+        <!-- 异常记录 -->
+        <div class="section"><h2>🚨 异常记录</h2><button class="btn" onclick="loadAlerts()">刷新</button><button class="btn btn-danger" onclick="clearAlerts()">清空</button><div class="list-container" id="alertList"></div></div>
+        <!-- 异常词库 -->
+        <div class="section"><h2>⚠️ 异常词库管理</h2><div class="form-group"><label>新关键词</label><input type="text" id="newKeyword" placeholder="例如：自杀"></div><div><button class="btn" onclick="addKeyword()">添加</button><button class="btn btn-danger" onclick="resetKeywords()">恢复默认</button></div><div class="list-container" id="keywordList"></div></div>
+        <!-- 测评试题管理（可视化） -->
+        <div class="section">
+            <h2>📝 测评试题管理</h2>
+            <div class="form-group"><label>试题集名称</label><input type="text" id="testSetName" placeholder="例如：心理健康自评量表"></div>
+            <div id="questionsEditor" class="list-container"></div>
+            <button class="btn" onclick="addQuestion()" style="margin-top:12px;">+ 添加题目</button>
+            <div style="margin-top:16px;"><button class="btn" onclick="saveTestSet()">保存试题集</button><button class="btn btn-danger" onclick="clearTestForm()">清空</button></div>
+            <div class="list-container" id="testSetList"></div>
+        </div>
+    </div>
+    <script>
+        const STORAGE_KEY = 'psy_qa_data';
+        const ASSESS_STORAGE_KEY = 'psy_assessments';
+        const CONVERSATIONS_KEY = 'psy_conversations';
+        const ALERTS_KEY = 'psy_alerts';
+        const DANGER_KEYWORDS_KEY = 'psy_danger_keywords';
+        const TEST_SETS_KEY = 'psy_test_sets';
+        const DEFAULT_DANGER_KEYWORDS = ['自杀','自残','去死','不想活','结束生命','跳楼','割腕','上吊','安眠药','杀死','杀人','暴力','虐待','伤害自己','想死','活不下去','没意义','极度绝望','无药可救','毁灭','报复社会','恐怖','炸弹'];
+
+        function esc(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+        // 问答管理
+        function loadQAData() { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : []; }
+        function saveQAData(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); renderQAList(); }
+        function renderQAList() { const data = loadQAData(); document.getElementById('qaList').innerHTML = data.map((item, idx) => `<div class="item"><strong>❓ ${esc(item.question)}</strong><div>💬 ${esc(item.answer)}</div><div>🏷️ 关键词：${item.keywords?item.keywords.join(', '):'无'}</div><div class="actions"><button class="btn" onclick="editQA(${idx})">编辑</button><button class="btn btn-danger" onclick="deleteQA(${idx})">删除</button></div></div>`).join(''); }
+        function clearForm() { document.getElementById('questionInput').value = ''; document.getElementById('answerInput').value = ''; document.getElementById('keywordsInput').value = ''; delete document.getElementById('questionInput').dataset.editIndex; }
+        function saveQA() {
+            const q = document.getElementById('questionInput').value.trim(), a = document.getElementById('answerInput').value.trim(), kw = document.getElementById('keywordsInput').value.trim();
+            if (!q || !a) { alert('问题和答案不能为空'); return; }
+            const kws = kw ? kw.split(',').map(k => k.trim()).filter(k => k) : [];
+            const data = loadQAData();
+            const editIdx = document.getElementById('questionInput').dataset.editIndex;
+            if (editIdx !== undefined && editIdx !== '') data[parseInt(editIdx)] = { ...data[parseInt(editIdx)], question: q, answer: a, keywords: kws };
+            else { const id = data.length ? Math.max(...data.map(d => d.id)) + 1 : 1; data.push({ id, question: q, answer: a, keywords: kws }); }
+            saveQAData(data); clearForm();
+        }
+        function editQA(idx) { const data = loadQAData(); const item = data[idx]; document.getElementById('questionInput').value = item.question; document.getElementById('answerInput').value = item.answer; document.getElementById('keywordsInput').value = item.keywords.join(', '); document.getElementById('questionInput').dataset.editIndex = idx; window.scrollTo({top:0,behavior:'smooth'}); }
+        function deleteQA(idx) { if (confirm('删除？')) { const data = loadQAData(); data.splice(idx, 1); saveQAData(data); } }
+
+        // 测评记录
+        function loadAssessmentRecords() { const records = JSON.parse(localStorage.getItem(ASSESS_STORAGE_KEY)||'[]'); const c = document.getElementById('recordList'); if (!records.length) { c.innerHTML='<p style="color:#888;">暂无记录</p>'; return; } c.innerHTML = records.map((r,i) => `<div class="item"><div>${esc(r.testSetName||'测评')} - 总分：${r.totalScore} 等级：${r.grade} <span style="font-size:0.8rem;color:#888;">${new Date(r.timestamp).toLocaleString()}</span></div><div>建议：${r.suggestion}</div><button class="btn btn-danger" onclick="deleteRecord(${i})">删除</button></div>`).join(''); }
+        function deleteRecord(i) { const records = JSON.parse(localStorage.getItem(ASSESS_STORAGE_KEY)||'[]'); records.splice(i,1); localStorage.setItem(ASSESS_STORAGE_KEY, JSON.stringify(records)); loadAssessmentRecords(); }
+        function clearAllRecords() { if (confirm('清空？')) { localStorage.removeItem(ASSESS_STORAGE_KEY); loadAssessmentRecords(); } }
+
+        // 对话记录
+        function loadConversations() { const convs = JSON.parse(localStorage.getItem(CONVERSATIONS_KEY)||'[]'); const c = document.getElementById('conversationList'); if (!convs.length) { c.innerHTML='<p style="color:#888;">暂无对话</p>'; return; } c.innerHTML = convs.map((con,i) => { const d = new Date(con.timestamp).toLocaleString(); return `<div class="item${con.isDanger?' alert':''}"><div class="timestamp">${d}</div><div class="content"><strong>用户：</strong>${esc(con.userMessage)}</div><div class="content"><strong>AI：</strong>${esc(con.aiReply)}</div><button class="btn btn-danger" onclick="deleteConversation(${i})">删除</button></div>`; }).reverse().join(''); }
+        function deleteConversation(i) { const convs = JSON.parse(localStorage.getItem(CONVERSATIONS_KEY)||'[]'); const realIdx = convs.length - 1 - i; convs.splice(realIdx,1); localStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(convs)); loadConversations(); }
+        function clearConversations() { if (confirm('清空？')) { localStorage.removeItem(CONVERSATIONS_KEY); loadConversations(); } }
+
+        // 异常记录
+        function loadAlerts() { const alerts = JSON.parse(localStorage.getItem(ALERTS_KEY)||'[]'); const c = document.getElementById('alertList'); if (!alerts.length) { c.innerHTML='<p style="color:#888;">暂无异常</p>'; return; } c.innerHTML = alerts.map((a,i) => `<div class="item alert"><div class="timestamp">${new Date(a.timestamp).toLocaleString()}</div><div class="content"><strong>用户消息：</strong>${esc(a.userMessage)}</div><button class="btn btn-danger" onclick="deleteAlert(${i})">删除</button></div>`).reverse().join(''); }
+        function deleteAlert(i) { const alerts = JSON.parse(localStorage.getItem(ALERTS_KEY)||'[]'); const realIdx = alerts.length - 1 - i; alerts.splice(realIdx,1); localStorage.setItem(ALERTS_KEY, JSON.stringify(alerts)); loadAlerts(); }
+        function clearAlerts() { if (confirm('清空？')) { localStorage.removeItem(ALERTS_KEY); loadAlerts(); } }
+
+        // 异常词库
+        function getDangerKeywords() { const raw = localStorage.getItem(DANGER_KEYWORDS_KEY); return raw ? JSON.parse(raw) : [...DEFAULT_DANGER_KEYWORDS]; }
+        function saveDangerKeywords(keywords) { localStorage.setItem(DANGER_KEYWORDS_KEY, JSON.stringify(keywords)); renderKeywordList(); }
+        function renderKeywordList() { const keywords = getDangerKeywords(); const c = document.getElementById('keywordList'); if (!keywords.length) { c.innerHTML='<p style="color:#888;">暂无关键词</p>'; return; } c.innerHTML = keywords.map((kw,i) => `<div class="item" style="display:flex;justify-content:space-between;"><span>${esc(kw)}</span><button class="btn btn-danger btn-sm" onclick="deleteKeyword(${i})">删除</button></div>`).join(''); }
+        function addKeyword() { const kw = document.getElementById('newKeyword').value.trim(); if (!kw) return alert('请输入关键词'); const keywords = getDangerKeywords(); if (keywords.includes(kw)) return alert('已存在'); keywords.push(kw); saveDangerKeywords(keywords); document.getElementById('newKeyword').value = ''; }
+        function deleteKeyword(i) { if (!confirm('删除？')) return; const keywords = getDangerKeywords(); keywords.splice(i,1); saveDangerKeywords(keywords); }
+        function resetKeywords() { if (confirm('恢复默认？')) saveDangerKeywords([...DEFAULT_DANGER_KEYWORDS]); }
+        function initKeywords() { if (!localStorage.getItem(DANGER_KEYWORDS_KEY)) saveDangerKeywords([...DEFAULT_DANGER_KEYWORDS]); else renderKeywordList(); }
+
+        // 测评试题可视化编辑
+        let currentQuestions = [];
+        function renderQuestionsEditor() {
+            const container = document.getElementById('questionsEditor');
+            if (!currentQuestions.length) { container.innerHTML = '<p style="color:#888;">暂无题目，请添加</p>'; return; }
+            container.innerHTML = currentQuestions.map((q, qIdx) => {
+                const optsHtml = (q.options||[]).map((opt, oIdx) => `
+                    <div class="option-row">
+                        <input class="option-value" placeholder="分值" value="${esc(opt.value)}" onchange="updateOption(${qIdx},${oIdx},'value',this.value)">
+                        <input placeholder="选项文字" value="${esc(opt.label)}" onchange="updateOption(${qIdx},${oIdx},'label',this.value)">
+                        <button class="btn btn-danger btn-sm" onclick="deleteOption(${qIdx},${oIdx})">删除</button>
+                    </div>`).join('');
+                return `<div class="question-block-editor">
+                    <div class="q-header"><span>题目 ${qIdx+1}</span><button class="btn btn-danger btn-sm" onclick="deleteQuestion(${qIdx})">删除题目</button></div>
+                    <input type="text" value="${esc(q.text)}" onchange="updateQuestionText(${qIdx},this.value)" style="margin-bottom:12px;">
+                    <div><strong>选项</strong></div>${optsHtml}
+                    <button class="btn btn-sm add-option-btn" onclick="addOption(${qIdx})">+ 添加选项</button>
+                </div>`;
+            }).join('');
+        }
+        function addQuestion() { currentQuestions.push({ text:'', options:[{value:'0',label:''}] }); renderQuestionsEditor(); }
+        function deleteQuestion(i) { currentQuestions.splice(i,1); renderQuestionsEditor(); }
+        function updateQuestionText(i, v) { currentQuestions[i].text = v; }
+        function addOption(i) { currentQuestions[i].options.push({value:'',label:''}); renderQuestionsEditor(); }
+        function deleteOption(i, j) { currentQuestions[i].options.splice(j,1); renderQuestionsEditor(); }
+        function updateOption(i, j, field, v) { currentQuestions[i].options[j][field] = v; }
+        function clearTestForm() { document.getElementById('testSetName').value=''; currentQuestions=[]; renderQuestionsEditor(); delete document.getElementById('testSetName').dataset.editId; }
+        function saveTestSet() {
+            const name = document.getElementById('testSetName').value.trim();
+            if (!name) return alert('请输入名称');
+            if (!currentQuestions.length) return alert('请添加题目');
+            for (let i=0;i<currentQuestions.length;i++) {
+                const q = currentQuestions[i];
+                if (!q.text.trim()) return alert(`第${i+1}题文字不能为空`);
+                for (let j=0;j<q.options.length;j++) {
+                    if (!q.options[j].label.trim()) return alert(`第${i+1}题选项${j+1}文字不能为空`);
+                    if (isNaN(parseFloat(q.options[j].value))) return alert(`第${i+1}题选项${j+1}分值需为数字`);
+                }
+            }
+            const questions = currentQuestions.map((q,idx)=>({id:idx+1, text:q.text.trim(), options:q.options.map(o=>({value:parseFloat(o.value), label:o.label.trim()}))}));
+            const sets = JSON.parse(localStorage.getItem(TEST_SETS_KEY)||'[]');
+            const editId = document.getElementById('testSetName').dataset.editId;
+            if (editId!==undefined && editId!=='') sets[parseInt(editId)] = { ...sets[parseInt(editId)], name, questions };
+            else sets.push({ id: Date.now(), name, questions });
+            localStorage.setItem(TEST_SETS_KEY, JSON.stringify(sets));
+            alert('保存成功'); renderTestSetList(); clearTestForm();
+        }
+        function editTestSet(i) { const sets = JSON.parse(localStorage.getItem(TEST_SETS_KEY)||'[]'); const s = sets[i]; document.getElementById('testSetName').value = s.name; currentQuestions = s.questions.map(q=>({text:q.text, options:q.options.map(o=>({value:o.value.toString(), label:o.label}))})); document.getElementById('testSetName').dataset.editId = i; renderQuestionsEditor(); window.scrollTo({top:0,behavior:'smooth'}); }
+        function deleteTestSet(i) { if (!confirm('删除？')) return; const sets = JSON.parse(localStorage.getItem(TEST_SETS_KEY)||'[]'); sets.splice(i,1); localStorage.setItem(TEST_SETS_KEY, JSON.stringify(sets)); renderTestSetList(); }
+        function renderTestSetList() { const sets = JSON.parse(localStorage.getItem(TEST_SETS_KEY)||'[]'); const c = document.getElementById('testSetList'); if (!sets.length) { c.innerHTML='<p style="color:#888;">暂无试题集</p>'; return; } c.innerHTML = sets.map((s,i)=>`<div class="item test-list-item"><div><strong>${esc(s.name)}</strong><div style="font-size:0.8rem;">题目数：${s.questions.length}</div></div><div class="actions"><button class="btn" onclick="editTestSet(${i})">编辑</button><button class="btn btn-danger" onclick="deleteTestSet(${i})">删除</button></div></div>`).join(''); }
+        function initTestSets() { if (!localStorage.getItem(TEST_SETS_KEY) || JSON.parse(localStorage.getItem(TEST_SETS_KEY)).length===0) { const def = [{id:1,name:'心理健康自评量表(PHQ-9)',questions:[{id:1,text:'做事时提不起劲或没有兴趣',options:[{value:0,label:'完全不会'},{value:1,label:'好几天'},{value:2,label:'一半以上的天数'},{value:3,label:'几乎每天'}]},{id:2,text:'感到心情低落、沮丧或绝望',options:[{value:0,label:'完全不会'},{value:1,label:'好几天'},{value:2,label:'一半以上的天数'},{value:3,label:'几乎每天'}]},{id:3,text:'入睡困难、睡不安稳或睡眠过多',options:[{value:0,label:'完全不会'},{value:1,label:'好几天'},{value:2,label:'一半以上的天数'},{value:3,label:'几乎每天'}]},{id:4,text:'感觉疲倦或没有活力',options:[{value:0,label:'完全不会'},{value:1,label:'好几天'},{value:2,label:'一半以上的天数'},{value:3,label:'几乎每天'}]},{id:5,text:'食欲不振或吃太多',options:[{value:0,label:'完全不会'},{value:1,label:'好几天'},{value:2,label:'一半以上的天数'},{value:3,label:'几乎每天'}]},{id:6,text:'觉得自己很糟或让自己/家人失望',options:[{value:0,label:'完全不会'},{value:1,label:'好几天'},{value:2,label:'一半以上的天数'},{value:3,label:'几乎每天'}]},{id:7,text:'对事物专注有困难',options:[{value:0,label:'完全不会'},{value:1,label:'好几天'},{value:2,label:'一半以上的天数'},{value:3,label:'几乎每天'}]},{id:8,text:'动作或说话速度缓慢或烦躁',options:[{value:0,label:'完全不会'},{value:1,label:'好几天'},{value:2,label:'一半以上的天数'},{value:3,label:'几乎每天'}]},{id:9,text:'有不如死掉或用某种方式伤害自己的念头',options:[{value:0,label:'完全不会'},{value:1,label:'好几天'},{value:2,label:'一半以上的天数'},{value:3,label:'几乎每天'}]},{id:10,text:'是否经常感到紧张、焦虑或不安',options:[{value:0,label:'完全不会'},{value:1,label:'好几天'},{value:2,label:'一半以上的天数'},{value:3,label:'几乎每天'}]}]}]; localStorage.setItem(TEST_SETS_KEY, JSON.stringify(def)); } renderTestSetList(); currentQuestions=[]; renderQuestionsEditor(); }
+
+        // 实时异常提醒
+        let lastAlertCnt = 0;
+        function checkAlerts() { const alerts = JSON.parse(localStorage.getItem(ALERTS_KEY)||'[]'); if (alerts.length > lastAlertCnt) { alert(`⚠️ 发现 ${alerts.length - lastAlertCnt} 条新异常！`); loadAlerts(); } lastAlertCnt = alerts.length; }
+        setInterval(checkAlerts, 2000);
+
+        function init() { renderQAList(); loadAssessmentRecords(); loadConversations(); loadAlerts(); initKeywords(); initTestSets(); lastAlertCnt = (JSON.parse(localStorage.getItem(ALERTS_KEY)||'[]')).length; }
+        init();
+    </script>
+</body>
+</html>
