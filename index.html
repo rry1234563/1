@@ -139,26 +139,6 @@
     </div>
 
     <script>
-        // ==================== 登录状态检查（新增） ====================
-        (async function() {
-            const token = localStorage.getItem('token');
-            const username = localStorage.getItem('username');
-            if (!token || !username) {
-                window.location.href = '/login.html';
-                return;
-            }
-            try {
-                const res = await fetch(`/api/verify?token=${encodeURIComponent(token)}&username=${encodeURIComponent(username)}`);
-                const data = await res.json();
-                if (!data.valid) {
-                    localStorage.clear();
-                    window.location.href = '/login.html';
-                }
-            } catch(e) {
-                console.warn('Token验证失败，但仍允许访问');
-            }
-        })();
-
         // ==================== 存储键 ====================
         const STORAGE_KEY = 'psy_qa_data';
         const ASSESS_STORAGE_KEY = 'psy_assessments';
