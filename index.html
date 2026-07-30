@@ -147,92 +147,36 @@
         const DANGER_KEYWORDS_KEY = 'psy_danger_keywords';
         const TEST_SETS_KEY = 'psy_test_sets';
 
-        // ==================== 问答数据 ====================
-        const defaultQAData = [
-            {id:1, question:'你好', answer:'你好呀~ 我是你的心理咨询助手。今天感觉怎么样？💜', keywords:['你好','嗨','hello']},
-            {id:2, question:'我最近压力很大', answer:'压力是常见的体验。能具体和我说说吗？🌿', keywords:['压力','焦虑','紧张']},
-            {id:3, question:'我睡不着怎么办', answer:'试试深呼吸练习……你愿意聊聊心事吗？🌙', keywords:['失眠','睡不着','睡眠']},
-            {id:4, question:'我情绪很低落', answer:'给你一个温暖的拥抱。能告诉我持续多久了吗？🫂', keywords:['难过','低落','抑郁','不开心']},
-            {id:5, question:'怎么调节自己的情绪', answer:'可以尝试给情绪命名、深呼吸、转移注意力等。', keywords:['调节情绪','控制情绪','发脾气']},
-            {id:6, question:'我觉得自己不够好', answer:'每个人都有自己的闪光点，要不要列出三件满意的小事？✨', keywords:['不自信','自卑','不够好']},
-            {id:7, question:'人际关系让我很累', answer:'学会温和表达自己的需求。想聊聊具体关系吗？', keywords:['人际关系','社交','朋友','同事']},
-            {id:8, question:'谢谢你的帮助', answer:'不用客气~ 我都在这里。💜🌟', keywords:['谢谢','感谢']}
-        ];
-        function loadQAData() {
-            try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) { const data = JSON.parse(raw); if (Array.isArray(data) && data.length) return data; } } catch(e) {}
-            saveQAData(defaultQAData); return [...defaultQAData];
-        }
-        function saveQAData(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
-        let qaData = loadQAData();
-        function refreshQAData() { qaData = loadQAData(); }
-
         // ==================== 动态危险关键词 ====================
         const DEFAULT_DANGER_KEYWORDS = ['自杀','自残','去死','不想活','结束生命','跳楼','割腕','上吊','安眠药','杀死','杀人','暴力','虐待','伤害自己','想死','活不下去','没意义','极度绝望','无药可救','毁灭','报复社会','恐怖','炸弹'];
         function getDangerKeywords() { try { const raw = localStorage.getItem(DANGER_KEYWORDS_KEY); if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr) && arr.length) return arr; } } catch(e) {} return [...DEFAULT_DANGER_KEYWORDS]; }
         function isDangerousMessage(text) { const keywords = getDangerKeywords(); const lower = text.toLowerCase(); return keywords.some(kw => lower.includes(kw.toLowerCase())); }
 
-        // ==================== 智能动态回复（豆包AI失败时的兜底） ====================
-        function generateDynamicReply(userInput) {
-            const input = userInput.trim(); const lower = input.toLowerCase();
-            const emotionMap = [
-                { keywords: ['难过','伤心','想哭','哭'], reply: '我能感受到你的难过，这种情绪一定让你很辛苦。想和我具体说说发生了什么吗？' },
-                { keywords: ['孤独','寂寞','一个人'], reply: '孤独感确实很不好受。你并不孤单，愿意多和我聊聊吗？' },
-                { keywords: ['焦虑','紧张','担心','害怕'], reply: '焦虑和紧张常常源于不确定性，我们可以一起试着梳理一下。' },
-                { keywords: ['生气','愤怒','讨厌','烦'], reply: '生气是正常的情绪反应，你愿意告诉我是什么事情让你这么生气吗？' },
-                { keywords: ['累','疲惫','没力气'], reply: '长期疲惫也会影响情绪，你最近是身体累还是心累呢？' },
-                { keywords: ['无聊','没意思','空虚'], reply: '感到生活乏味也是值得关注的信号，我们可以一起探索一下。' },
-                { keywords: ['开心','快乐','高兴'], reply: '听到你感到开心，我也为你高兴！能分享一下发生了什么好事吗？' }
-            ];
-            const topicMap = [
-                { keywords: ['工作','上班','同事','老板'], reply: '工作上的事情常常影响整体状态，愿意具体说说吗？' },
-                { keywords: ['家庭','父母','孩子','老公','老婆'], reply: '家庭关系有时也会带来压力，能告诉我是什么问题困扰你吗？' },
-                { keywords: ['感情','恋爱','分手'], reply: '感情问题触及我们最柔软的部分，愿意多分享一些吗？' },
-                { keywords: ['朋友','闺蜜','兄弟'], reply: '朋友之间有时也会有摩擦，具体是什么事呢？' },
-                { keywords: ['学习','考试','成绩'], reply: '学习压力不小，适当休息和调整方法会很有帮助。' },
-                { keywords: ['健康','生病','身体','睡眠'], reply: '身体和心理相互影响，可以详细说说你的状况吗？' }
-            ];
-            for (const item of emotionMap) if (item.keywords.some(kw => lower.includes(kw))) return item.reply;
-            for (const item of topicMap) if (item.keywords.some(kw => lower.includes(kw))) return item.reply;
-            const words = input.replace(/[，。！？、,.!?]/g, ' ').split(/\s+/).filter(w => w.length >= 1);
-            const meaningfulWords = words.filter(w => /^[\u4e00-\u9fa5]{2,}$/.test(w));
-            if (meaningfulWords.length > 0) { const keyTopic = meaningfulWords.slice(0,2).join('、'); return `你提到了“${keyTopic}”，我很想了解更多。可以再详细说说吗？`; }
-            return '谢谢你的分享，我很想更深入地了解你的感受。可以再多和我说一些吗？';
-        }
-
-        // ==================== 答案查找（预设优先 → 豆包AI → 智能回复） ====================
+        // ==================== 答案查找（全部使用豆包AI） ====================
         async function findAnswer(input) {
-            refreshQAData();
             const q = input.trim(); if (!q) return null;
-            const lower = q.toLowerCase();
-            // 1. 精确匹配预设问题
-            for (const item of qaData) if (item.question.trim() === q) return item.answer;
-            // 2. 关键词匹配
-            let best = null, bestScore = 0;
-            for (const item of qaData) {
-                if (item.keywords && Array.isArray(item.keywords))
-                    for (const kw of item.keywords) if (lower.includes(kw.toLowerCase()) && kw.length > bestScore) { bestScore = kw.length; best = item; }
-            }
-            if (best) return best.answer;
-            // 3. 部分包含匹配
-            for (const item of qaData) if (item.question.includes(q) || q.includes(item.question)) return item.answer;
-            // 4. 调用豆包AI，失败则智能回复
+            // 直接调用豆包AI，不再检查预设问答
             return await fetchChatAI(q);
         }
 
-        // 调用豆包AI
+        // 调用豆包AI函数
         async function fetchChatAI(query) {
             try {
                 const res = await fetch(`/.netlify/functions/chat?q=${encodeURIComponent(query)}`);
                 if (!res.ok) throw new Error('AI接口异常');
                 const data = await res.json();
-                return data.answer || generateDynamicReply(query);
+                return data.answer || '抱歉，我暂时无法回答这个问题，请稍后再试。';
             } catch (e) {
-                console.warn('豆包AI调用失败，使用智能回复', e);
-                return generateDynamicReply(query);
+                console.warn('豆包AI调用失败', e);
+                return '抱歉，AI服务暂时不可用，请稍后再试。';
             }
         }
 
-        function getRandomQuestions(count=3) { refreshQAData(); if (!qaData.length) return ['你好','我最近压力很大']; const shuffled = [...qaData].sort(()=>Math.random()-0.5); return shuffled.slice(0, Math.min(count, shuffled.length)).map(q=>q.question); }
+        function getRandomQuestions(count=3) {
+            const sampleQuestions = ['你好','我最近压力很大','我睡不着怎么办','我情绪很低落','怎么调节自己的情绪'];
+            const shuffled = [...sampleQuestions].sort(()=>Math.random()-0.5);
+            return shuffled.slice(0, Math.min(count, shuffled.length));
+        }
 
         // ==================== 对话记录存储 ====================
         function saveConversation(userMsg, aiReply, isDanger) {
@@ -394,7 +338,6 @@
 
         // ==================== 初始化 ====================
         refreshSuggested(); scrollToBottom(); userInput.focus();
-        setInterval(() => { const cur = loadQAData(); if (JSON.stringify(cur) !== JSON.stringify(qaData)) { qaData = cur; refreshSuggested(); } }, 3000);
     </script>
 </body>
 </html>
