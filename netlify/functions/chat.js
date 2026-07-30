@@ -1,6 +1,6 @@
 // netlify/functions/chat.js
-const VOLC_ACCESS_KEY = '你的Access Key';      // ← 替换这里
-const VOLC_SECRET_KEY = '你的Secret Key';      // ← 替换这里
+const VOLC_ACCESS_KEY = 'TjJWbU0yWTJOalkzT0RNd05EazVZMkkyWldSbVpHSmpObU16WWpReU5ERQ==';      // ← 替换这里
+const VOLC_SECRET_KEY = 'VxCgNvLTE.ChBpZGRMZWNPZTdxaUdpUlgwELaIle4HGAEqEHlzE6MCNU78pYu5-P5VH_4.zfeHmBE0fL3VIJl5QrAwzU_gJvtiULa5UImFxtnh-eOaIhPkjYx1b1PR-T7QL1KA7cQsiZg7rD8siocWyzgveAeZ';      // ← 替换这里
 
 // 获取豆包API的token（自动续期）
 async function getVolcToken() {
