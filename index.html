@@ -171,7 +171,7 @@
         function getDangerKeywords() { try { const raw = localStorage.getItem(DANGER_KEYWORDS_KEY); if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr) && arr.length) return arr; } } catch(e) {} return [...DEFAULT_DANGER_KEYWORDS]; }
         function isDangerousMessage(text) { const keywords = getDangerKeywords(); const lower = text.toLowerCase(); return keywords.some(kw => lower.includes(kw.toLowerCase())); }
 
-        // ==================== 智能动态回复（联网搜索失败时的兜底） ====================
+        // ==================== 智能动态回复（豆包AI失败时的兜底） ====================
         function generateDynamicReply(userInput) {
             const input = userInput.trim(); const lower = input.toLowerCase();
             const emotionMap = [
@@ -199,7 +199,7 @@
             return '谢谢你的分享，我很想更深入地了解你的感受。可以再多和我说一些吗？';
         }
 
-        // ==================== 答案查找（预设优先 → 联网搜索 → 智能回复） ====================
+        // ==================== 答案查找（预设优先 → 豆包AI → 智能回复） ====================
         async function findAnswer(input) {
             refreshQAData();
             const q = input.trim(); if (!q) return null;
@@ -215,19 +215,19 @@
             if (best) return best.answer;
             // 3. 部分包含匹配
             for (const item of qaData) if (item.question.includes(q) || q.includes(item.question)) return item.answer;
-            // 4. 尝试联网搜索，失败则智能回复
-            return await fetchSearchResult(q);
+            // 4. 调用豆包AI，失败则智能回复
+            return await fetchChatAI(q);
         }
 
-        // 修改后的联网搜索请求地址，使用 Netlify 默认函数路径
-        async function fetchSearchResult(query) {
+        // 调用豆包AI
+        async function fetchChatAI(query) {
             try {
-                const res = await fetch(`/.netlify/functions/search?q=${encodeURIComponent(query)}`);
-                if (!res.ok) throw new Error('搜索接口异常');
+                const res = await fetch(`/.netlify/functions/chat?q=${encodeURIComponent(query)}`);
+                if (!res.ok) throw new Error('AI接口异常');
                 const data = await res.json();
                 return data.answer || generateDynamicReply(query);
             } catch (e) {
-                console.warn('联网搜索失败，使用智能回复', e);
+                console.warn('豆包AI调用失败，使用智能回复', e);
                 return generateDynamicReply(query);
             }
         }
